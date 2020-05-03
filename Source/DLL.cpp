@@ -51,7 +51,7 @@ namespace BethesdaModule::ShellView
 
 	HRESULT STDMETHODCALLTYPE DLLClassFactory::QueryInterface(REFIID riid, void** ppv)
 	{
-		constexpr QITAB interfaces[] =
+		static const QITAB interfaces[] =
 		{
 			QITABENT(DLLClassFactory, IClassFactory),
 			{nullptr, 0}
@@ -60,47 +60,50 @@ namespace BethesdaModule::ShellView
 	}
 }
 
-HRESULT STDAPICALLTYPE DllGetClassObject(REFCLSID clsid, REFIID riid, void** result)
+extern "C"
 {
-	using namespace BethesdaModule::ShellView;
-
-	constexpr ClassObjectInitializer classObjectInitializers[] =
+	HRESULT STDAPICALLTYPE DllGetClassObject(REFCLSID clsid, REFIID riid, void** result)
 	{
-		{&__uuidof(COpenMetadataHandler), COpenMetadataHandler_CreateInstance}
-	};
-	return DLLClassFactory::CreateInstance(clsid, classObjectInitializers, std::size(classObjectInitializers), riid, result);
-}
-HRESULT STDAPICALLTYPE DllRegisterServer()
-{
-	using namespace KxFramework;
-	using namespace BethesdaModule::ShellView;
+		using namespace BethesdaModule::ShellView;
 
-	HResult hr = RegisterDocFile();
-	if (hr)
-	{
-		hr = RegisterOpenMetadata();
+		constexpr ClassObjectInitializer classObjectInitializers[] =
+		{
+			{&__uuidof(COpenMetadataHandler), COpenMetadataHandler_CreateInstance}
+		};
+		return DLLClassFactory::CreateInstance(clsid, classObjectInitializers, std::size(classObjectInitializers), riid, result);
 	}
-	return hr;
-}
-HRESULT STDAPICALLTYPE DllUnregisterServer()
-{
-	using namespace KxFramework;
-	using namespace BethesdaModule::ShellView;
-
-	HResult hr = UnregisterDocFile();
-	if (hr)
+	HRESULT STDAPICALLTYPE DllRegisterServer()
 	{
-		hr = UnregisterOpenMetadata();
-	}
-	return hr;
-}
-HRESULT STDAPICALLTYPE DllCanUnloadNow()
-{
-	// Only allow the DLL to be unloaded after all outstanding references have been released
-	return g_RefCount == 0 ? S_OK : S_FALSE;
-}
+		using namespace KxFramework;
+		using namespace BethesdaModule::ShellView;
 
-BOOL STDAPICALLTYPE DllMain(HINSTANCE handle, DWORD eventID, void* reserved)
-{
-	return FALSE;
+		HResult hr = RegisterDocFile();
+		if (hr)
+		{
+			hr = RegisterOpenMetadata();
+		}
+		return hr;
+	}
+	HRESULT STDAPICALLTYPE DllUnregisterServer()
+	{
+		using namespace KxFramework;
+		using namespace BethesdaModule::ShellView;
+
+		HResult hr = UnregisterDocFile();
+		if (hr)
+		{
+			hr = UnregisterOpenMetadata();
+		}
+		return hr;
+	}
+	HRESULT STDAPICALLTYPE DllCanUnloadNow()
+	{
+		// Only allow the DLL to be unloaded after all outstanding references have been released
+		return g_RefCount == 0 ? S_OK : S_FALSE;
+	}
+
+	BOOL STDAPICALLTYPE DllMain(HINSTANCE handle, DWORD eventID, void* reserved)
+	{
+		return FALSE;
+	}
 }

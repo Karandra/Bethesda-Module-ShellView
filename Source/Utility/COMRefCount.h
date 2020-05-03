@@ -27,7 +27,7 @@ namespace BethesdaModule::ShellView
 				const T refCount = --m_RefCount;
 				if (refCount == 0)
 				{
-					delete object;
+					delete m_Object;
 				}
 				return refCount;
 			}

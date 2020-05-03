@@ -14,6 +14,8 @@
 #include <Kx/General/StringFormater.h>
 using namespace KxFramework;
 
+#pragma warning(disable: 4309)
+
 namespace
 {
 	EXTERN_C IMAGE_DOS_HEADER __ImageBase;
@@ -53,7 +55,7 @@ namespace
 				{
 					isSuccess = key.SetUInt64Value(name, value);
 				}
-				else if constexpr(std::is_same_v<wxScopedCharBuffer>)
+				else if constexpr(std::is_same_v<TValue, wxScopedCharBuffer>)
 				{
 					isSuccess = key.SetBinaryValue(name, value.data(), value.length());
 				}
@@ -61,7 +63,7 @@ namespace
 				{
 					isSuccess = key.SetStringValue(name, value);
 				}
-				return isSuccess ? S_OK : E_FAIL
+				return isSuccess ? S_OK : E_FAIL;
 			}
 		}
 		return E_FAIL;
@@ -97,7 +99,7 @@ namespace
 
 namespace BethesdaModule::ShellView
 {
-	bool RegisterExtension::_IsBaseClassProgID(const String& progID) const
+	bool RegisterExtension::IsBaseClassProgID(const String& progID) const
 	{
 		// Work around the missing "NeverDefault" feature for verbs on downlevel platforms
 		// these ProgID values should need special treatment to keep the verbs registered there from becoming default.
@@ -107,20 +109,20 @@ namespace BethesdaModule::ShellView
 			progID.IsSameAs(L"*", StringOpFlag::IgnoreCase) ||
 			progID.IsSameAs(L"SystemFileAssociations\\Directory.", StringOpFlag::IgnoreCase); // SystemFileAssociations\Directory.* values
 	}
-	HResult RegisterExtension::_EnsureBaseProgIDVerbIsNone(const String& progID) const
+	HResult RegisterExtension::EnsureBaseProgIDVerbIsNone(const String& progID) const
 	{
 		// Putting the value of "none" that does not match any of the verbs under this key avoids those verbs from becoming the default.
-		if (_IsBaseClassProgID(progID))
+		if (IsBaseClassProgID(progID))
 		{
 			RegFormatSetValue(m_RegistryBaseKey, L"Software\\Classes\\%1\\Shell", L"", L"none", progID);
 		}
 		return S_OK;
 	}
-	void RegisterExtension::_UpdateAssocChanged(HResult hr, const String& keyFormatString) const
+	void RegisterExtension::UpdateAssocChanged(HResult hr, const String& keyFormatString) const
 	{
 		if (hr && !m_AssociationsChanged)
 		{
-			if (keyFormatString.IsSameAs(wxS("Software\\Classes\\%s"), StringOpFlag::IgnoreCase) ||
+			if (keyFormatString.IsSameAs(wxS("Software\\Classes\\%1"), StringOpFlag::IgnoreCase) ||
 				keyFormatString.IsSameAs(wxS("PropertyHandlers"), StringOpFlag::IgnoreCase) ||
 				keyFormatString.IsSameAs(wxS("KindMap"), StringOpFlag::IgnoreCase)
 				)
@@ -163,7 +165,7 @@ namespace BethesdaModule::ShellView
 
 	HResult RegisterExtension::RegisterInProcServer(const String& friendlyName, const String& threadingModel) const
 	{
-		HResult hr = _EnsureModule();
+		HResult hr = EnsureModule();
 		if (hr)
 		{
 			String guid = FormatGUIDToClassID(m_ClassGUID);
@@ -189,17 +191,17 @@ namespace BethesdaModule::ShellView
 	
 	HResult RegisterExtension::RegisterAppAsLocalServer(const String& friendlyName, const String& cmdLine) const
 	{
-		HResult hr = _EnsureModule();
+		HResult hr = EnsureModule();
 		if (hr)
 		{
 			String fullCmdLine;
 			if (!cmdLine.IsEmpty())
 			{
-				fullCmdLine = String::Format(wxS("%1 %2"), m_ModuleName, cmdLine);
+				fullCmdLine = String::Format(wxS("%1 %2"), m_ModuleName.GetFullPathWithNS(), cmdLine);
 			}
 			else
 			{
-				fullCmdLine = m_ModuleName;
+				fullCmdLine = m_ModuleName.GetFullPathWithNS();
 			}
 
 			String guid = FormatGUIDToClassID(m_ClassGUID);
@@ -219,22 +221,22 @@ namespace BethesdaModule::ShellView
 	}
 	HResult RegisterExtension::RegisterElevatableLocalServer(const String& friendlyName, uint32_t idLocalizeString, uint32_t idIconRef) const
 	{
-		HResult hr = _EnsureModule();
+		HResult hr = EnsureModule();
 		if (hr)
 		{
 			String guid = FormatGUIDToClassID(m_ClassGUID);
-			if (hr = RegFormatSetValue(RegistryBaseKey::LocalMachine, L"Software\\Classes\\CLSID\\%s", L"", friendlyName, guid))
+			if (hr = RegFormatSetValue(RegistryBaseKey::LocalMachine, L"Software\\Classes\\CLSID\\%1", L"", friendlyName, guid))
 			{
-				String resourceString = String::Format(wxS("@%1,-%2"), m_ModuleName, idLocalizeString);
-				if (hr = RegFormatSetValue(RegistryBaseKey::LocalMachine, L"Software\\Classes\\CLSID\\%s", L"LocalizedString", resourceString, guid))
+				String resourceString = String::Format(wxS("@%1,-%2"), m_ModuleName.GetFullPathWithNS(), idLocalizeString);
+				if (hr = RegFormatSetValue(RegistryBaseKey::LocalMachine, L"Software\\Classes\\CLSID\\%1", L"LocalizedString", resourceString, guid))
 				{
-					if (hr = RegFormatSetValue(RegistryBaseKey::LocalMachine, L"Software\\Classes\\CLSID\\%s\\LocalServer32", L"", m_ModuleName, guid))
+					if (hr = RegFormatSetValue(RegistryBaseKey::LocalMachine, L"Software\\Classes\\CLSID\\%1\\LocalServer32", L"", m_ModuleName.GetFullPathWithNS(), guid))
 					{
-						hr = RegFormatSetValue(RegistryBaseKey::LocalMachine, L"Software\\Classes\\CLSID\\%s\\Elevation", L"Enabled", 1, guid);
+						hr = RegFormatSetValue(RegistryBaseKey::LocalMachine, L"Software\\Classes\\CLSID\\%1\\Elevation", L"Enabled", 1, guid);
 						if (idIconRef != 0)
 						{
-							resourceString = String::Format(wxS("@%s,-%d"), m_ModuleName, idIconRef);
-							hr = RegFormatSetValue(RegistryBaseKey::LocalMachine, L"Software\\Classes\\CLSID\\%s\\Elevation", L"IconReference", resourceString, guid);
+							resourceString = String::Format(wxS("@%1,-%2"), m_ModuleName.GetFullPathWithNS(), idIconRef);
+							hr = RegFormatSetValue(RegistryBaseKey::LocalMachine, L"Software\\Classes\\CLSID\\%1\\Elevation", L"IconReference", resourceString, guid);
 						}
 					}
 				}
@@ -272,7 +274,7 @@ namespace BethesdaModule::ShellView
 			0x01, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x20, 0x00, 0x00, 0x00, 0x20, 0x02, 0x00, 0x00
 		};
 
-		HResult hr = _EnsureModule();
+		HResult hr = EnsureModule();
 		if (hr)
 		{
 			String guid = FormatGUIDToClassID(m_ClassGUID);
@@ -285,16 +287,16 @@ namespace BethesdaModule::ShellView
 				{
 					if (hr = RegFormatSetValue(RegistryBaseKey::LocalMachine, L"Software\\Classes\\CLSID\\%1", L"AppId", guid, guid))
 					{
-						String resourceString = String::Format(wxS("@%1,-%2"), m_ModuleName, idLocalizeString);
-						if (hr = RegFormatSetValue(RegistryBaseKey::LocalMachine, L"Software\\Classes\\CLSID\\%s", L"LocalizedString", resourceString, guid))
+						String resourceString = String::Format(wxS("@%1,-%2"), m_ModuleName.GetFullPathWithNS(), idLocalizeString);
+						if (hr = RegFormatSetValue(RegistryBaseKey::LocalMachine, L"Software\\Classes\\CLSID\\%1", L"LocalizedString", resourceString, guid))
 						{
-							if (hr = RegFormatSetValue(RegistryBaseKey::LocalMachine, L"Software\\Classes\\CLSID\\%s\\InProcServer32", L"", m_ModuleName, guid))
+							if (hr = RegFormatSetValue(RegistryBaseKey::LocalMachine, L"Software\\Classes\\CLSID\\%1\\InProcServer32", L"", m_ModuleName.GetFullPathWithNS(), guid))
 							{
-								hr = RegFormatSetValue(RegistryBaseKey::LocalMachine, L"Software\\Classes\\CLSID\\%s\\Elevation", L"Enabled", 1, guid);
+								hr = RegFormatSetValue(RegistryBaseKey::LocalMachine, L"Software\\Classes\\CLSID\\%1\\Elevation", L"Enabled", 1, guid);
 								if (hr && idIconRef)
 								{
-									resourceString = String::Format(wxS("@%s,-%d"), m_ModuleName, idIconRef);
-									hr = RegFormatSetValue(RegistryBaseKey::LocalMachine, L"Software\\Classes\\CLSID\\%s\\Elevation", L"IconReference", resourceString, guid);
+									resourceString = String::Format(wxS("@%1,-%2"), m_ModuleName.GetFullPathWithNS(), idIconRef);
+									hr = RegFormatSetValue(RegistryBaseKey::LocalMachine, L"Software\\Classes\\CLSID\\%1\\Elevation", L"IconReference", resourceString, guid);
 								}
 							}
 						}
@@ -319,7 +321,7 @@ namespace BethesdaModule::ShellView
 	}
 	HResult RegisterExtension::RegisterAppDropTarget() const
 	{
-		HResult hr = _EnsureModule();
+		HResult hr = EnsureModule();
 		if (hr)
 		{
 			// Windows 7 supports per user AppPaths, downlevel requires HKLM
@@ -337,7 +339,7 @@ namespace BethesdaModule::ShellView
 		HResult hr = RegFormatSetValue(m_RegistryBaseKey, L"Software\\Classes\\%1\\shell\\%2\\command", L"", cmdLine, progID, verb);
 		if (hr)
 		{
-			hr = _EnsureBaseProgIDVerbIsNone(progID);
+			hr = EnsureBaseProgIDVerbIsNone(progID);
 			hr = RegFormatSetValue(m_RegistryBaseKey, L"Software\\Classes\\%1\\shell\\%2", L"", verbDisplayName, progID, verb);
 		}
 		return hr;
@@ -350,7 +352,7 @@ namespace BethesdaModule::ShellView
 		HResult hr = RegFormatSetValue(m_RegistryBaseKey, L"Software\\Classes\\%1\\Shell\\%2\\DropTarget", L"CLSID", FormatGUIDToClassID(m_ClassGUID), progID, verb);
 		if (hr)
 		{
-			hr = _EnsureBaseProgIDVerbIsNone(progID);
+			hr = EnsureBaseProgIDVerbIsNone(progID);
 			hr = RegFormatSetValue(m_RegistryBaseKey, L"Software\\Classes\\%1\\Shell\\%2", L"", verbDisplayName, progID, verb);
 		}
 		return hr;
@@ -363,7 +365,7 @@ namespace BethesdaModule::ShellView
 		HResult hr = RegFormatSetValue(m_RegistryBaseKey, L"Software\\Classes\\%1\\Shell\\%2\\command", L"DelegateExecute", FormatGUIDToClassID(m_ClassGUID), progID, verb);
 		if (hr)
 		{
-			hr = _EnsureBaseProgIDVerbIsNone(progID);
+			hr = EnsureBaseProgIDVerbIsNone(progID);
 			hr = RegFormatSetValue(m_RegistryBaseKey, L"Software\\Classes\\%1\\Shell\\%2", L"", verbDisplayName, progID, verb);
 		}
 		return hr;
@@ -377,7 +379,7 @@ namespace BethesdaModule::ShellView
 		HResult hr = RegFormatSetValue(m_RegistryBaseKey, L"Software\\Classes\\%1\\Shell\\%2", L"ExplorerCommandHandler", FormatGUIDToClassID(m_ClassGUID), progID, verb);
 		if (hr)
 		{
-			hr = _EnsureBaseProgIDVerbIsNone(progID);
+			hr = EnsureBaseProgIDVerbIsNone(progID);
 			hr = RegFormatSetValue(m_RegistryBaseKey, L"Software\\Classes\\%1\\Shell\\%2", L"", verbDisplayName, progID, verb);
 		}
 		return hr;
@@ -417,12 +419,12 @@ namespace BethesdaModule::ShellView
 		// AttributeValue
 		// ImpliedSelectionModel
 		// SuppressionPolicy
-		return RegFormatSetValue(m_RegistryBaseKey, L"Software\\Classes\\%s\\shell\\%s", valueName, value, progID, verb);
+		return RegFormatSetValue(m_RegistryBaseKey, L"Software\\Classes\\%1\\shell\\%2", valueName, value, progID, verb);
 	}
 	HResult RegisterExtension::RegisterVerbDefaultAndOrder(const String& progID, const String& verbOrderFirstIsDefault) const
 	{
 		// "open explorer" is an example
-		return RegFormatSetValue(m_RegistryBaseKey, L"Software\\Classes\\%s\\Shell", L"", verbOrderFirstIsDefault, progID);
+		return RegFormatSetValue(m_RegistryBaseKey, L"Software\\Classes\\%1\\Shell", L"", verbOrderFirstIsDefault, progID);
 	}
 	HResult RegisterExtension::RegisterPlayerVerbs(const std::vector<String> associations, const String& verb, const String& title) const
 	{
@@ -534,7 +536,7 @@ namespace BethesdaModule::ShellView
 	HResult RegisterExtension::RegisterLinkHandler(const String& progID) const
 	{
 		// IResolveShellLink handler, used for custom link resolution behavior
-		return RegFormatSetValue(m_RegistryBaseKey, L"Software\\Classes\\%s\\ShellEx\\LinkHandler", L"", FormatGUIDToClassID(m_ClassGUID), progID);
+		return RegFormatSetValue(m_RegistryBaseKey, L"Software\\Classes\\%1\\ShellEx\\LinkHandler", L"", FormatGUIDToClassID(m_ClassGUID), progID);
 	}
 	HResult RegisterExtension::UnRegisterPropertyHandler(const String& extension) const
 	{
@@ -553,7 +555,7 @@ namespace BethesdaModule::ShellView
 			if (idIcon != 0)
 			{
 				// HKCR\<ProgID>\DefaultIcon
-				String iconRef = String::Format(wxS("\"%1\",-%2"), m_ModuleName, idIcon);
+				String iconRef = String::Format(wxS("\"%1\",-%2"), m_ModuleName.GetFullPathWithNS(), idIcon);
 				hr = RegFormatSetValue(m_RegistryBaseKey, L"Software\\Classes\\%1\\DefaultIcon", L"", iconRef, progID);
 			}
 		}

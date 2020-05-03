@@ -48,4 +48,9 @@
       <Filter>Resources</Filter>
     </ResourceCompile>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Bethesda Module ShellView.def">
+      <Filter>Resources</Filter>
+    </None>
+  </ItemGroup>
 </Project>

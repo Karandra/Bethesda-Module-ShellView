@@ -9,7 +9,7 @@
 
 namespace BethesdaModule::ShellView
 {
-	// production code should use an installer technology like MSI to register its handlers rather than this class.
+	// Production code should use an installer technology like MSI to register its handlers rather than this class.
 	// This class is used for demonstration purposes, it encapsulate the different types of handler registrations,
 	// schematics those by proving methods that have parameters that map to the supported extension schema and makes
 	// it easy to create self registering .exe and .dlls.
@@ -23,13 +23,13 @@ namespace BethesdaModule::ShellView
 			mutable bool m_AssociationsChanged = false;
 
 		private:
-			HResult _EnsureModule() const
+			HResult EnsureModule() const
 			{
-				return !m_ModuleName.IsEmpty() ? S_OK : E_FAIL;
+				return m_ModuleName.IsValid() ? S_OK : E_FAIL;
 			}
-			bool _IsBaseClassProgID(const String& progID)  const;
-			HResult _EnsureBaseProgIDVerbIsNone(const String& progID) const;
-			void _UpdateAssocChanged(HResult hr, const String& keyFormatString) const;
+			bool IsBaseClassProgID(const String& progID)  const;
+			HResult EnsureBaseProgIDVerbIsNone(const String& progID) const;
+			void UpdateAssocChanged(HResult hr, const String& keyFormatString) const;
 
 		public:
 			RegisterExtension(const UniversallyUniqueID& clsid = {}, RegistryBaseKey hkeyRoot = RegistryBaseKey::CurrentUser);
@@ -50,7 +50,7 @@ namespace BethesdaModule::ShellView
 				m_RegistryBaseKey = hkeyRoot;
 			}
 
-			HResult SetModule(String moduleName)
+			HResult SetModule(FSPath moduleName)
 			{
 				m_ModuleName = std::move(moduleName);
 			}

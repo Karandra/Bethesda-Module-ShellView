@@ -10,16 +10,34 @@
 
 namespace BethesdaModule::ShellView
 {
+	class DECLSPEC_UUID("F0A39FC0-D248-4EF8-BF47-84A9B44BE002") DLLClassFactory;
+	class DECLSPEC_UUID("E1A6729E-D430-46a4-A45D-CC042D7F7B36") COpenMetadataHandler;
+
 	void DllAddRef() noexcept;
 	void DllRelease() noexcept;
 
-	HResult RegisterDocFile();
-	HResult UnregisterDocFile();
-	HResult RegisterOpenMetadata();
-	HResult UnregisterOpenMetadata();
+	inline HResult RegisterDocFile()
+	{
+		return E_FAIL;
+	}
+	inline HResult UnregisterDocFile()
+	{
+		return E_FAIL;
+	}
+	inline HResult RegisterOpenMetadata()
+	{
+		return E_FAIL;
+	}
+	inline HResult UnregisterOpenMetadata()
+	{
+		return E_FAIL;
+	}
 
-	class DECLSPEC_UUID("E1A6729E-D430-46a4-A45D-CC042D7F7B36") COpenMetadataHandler;
-	HRESULT COpenMetadataHandler_CreateInstance(REFIID riid, void** ppv);
+	
+	inline HRESULT COpenMetadataHandler_CreateInstance(REFIID riid, void** ppv)
+	{
+		return E_FAIL;
+	}
 }
 
 namespace BethesdaModule::ShellView
@@ -84,7 +102,10 @@ namespace BethesdaModule::ShellView
 	};
 }
 
-BMSV_EXPORT HRESULT STDAPICALLTYPE DllGetClassObject(REFCLSID clsid, REFIID riid, void** result);
-BMSV_EXPORT HRESULT STDAPICALLTYPE DllRegisterServer();
-BMSV_EXPORT HRESULT STDAPICALLTYPE DllUnregisterServer();
-BMSV_EXPORT HRESULT STDAPICALLTYPE DllCanUnloadNow();
+extern "C"
+{
+	HRESULT STDAPICALLTYPE DllGetClassObject(REFCLSID clsid, REFIID riid, void** result);
+	HRESULT STDAPICALLTYPE DllRegisterServer();
+	HRESULT STDAPICALLTYPE DllUnregisterServer();
+	HRESULT STDAPICALLTYPE DllCanUnloadNow();
+}
