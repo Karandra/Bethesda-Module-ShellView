@@ -12,7 +12,6 @@
 #include <Kx/System/ShellLink.h>
 #include <Kx/System/ShellOperations.h>
 #include <Kx/General/StringFormater.h>
-using namespace KxFramework;
 
 #pragma warning(disable: 4309)
 
@@ -20,14 +19,12 @@ namespace
 {
 	EXTERN_C IMAGE_DOS_HEADER __ImageBase;
 
-	HResult ResultFromKnownLastError() noexcept
+	KxFramework::HResult ResultFromKnownLastError() noexcept
 	{
+		using namespace KxFramework;
+
 		const uint32_t errorCode = ::GetLastError();
 		return errorCode == ERROR_SUCCESS ? E_FAIL : ::HRESULT_FROM_WIN32(errorCode);
-	}
-	HResult MapNotFoundToSuccess(HResult hr) noexcept
-	{
-		return ::HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND) == hr ? HResult(S_OK) : hr;
 	}
 	HMODULE GetThisModuleHandle() noexcept
 	{
@@ -38,61 +35,10 @@ namespace
 		return reinterpret_cast<HMODULE>(&__ImageBase);
 	}
 
-	template<class TValue, class... Args>
-	HResult RegFormatSetValue(RegistryBaseKey baseKey, const String& subPathFormat, const String& name, const TValue& value, Args&&... arg)
+	KxFramework::String FormatGUIDToClassID(const KxFramework::UniversallyUniqueID& guid)
 	{
-		RegistryKey root(baseKey);
-		if (root)
-		{
-			if (RegistryKey key = root.CreateKey(String::Format(subPathFormat, std::forward<Args>(arg)...), RegistryAccess::Write))
-			{
-				bool isSuccess = false;
-				if constexpr(std::is_integral_v<TValue> && sizeof(TValue) <= 4)
-				{
-					isSuccess = key.SetUInt32Value(name, value);
-				}
-				else if constexpr(std::is_integral_v<TValue> && sizeof(TValue) > 4)
-				{
-					isSuccess = key.SetUInt64Value(name, value);
-				}
-				else if constexpr(std::is_same_v<TValue, wxScopedCharBuffer>)
-				{
-					isSuccess = key.SetBinaryValue(name, value.data(), value.length());
-				}
-				else
-				{
-					isSuccess = key.SetStringValue(name, value);
-				}
-				return isSuccess ? S_OK : E_FAIL;
-			}
-		}
-		return E_FAIL;
-	}
+		using namespace KxFramework;
 
-	template<class... Args>
-	HResult RegFormatRemoveKey(RegistryBaseKey baseKey, const String& subPathFormat, const String& name, Args&&... arg)
-	{
-		RegistryKey root(baseKey, {}, RegistryAccess::Delete);
-		if (root)
-		{
-			return root.RemoveKey(String::Format(subPathFormat, std::forward<Args>(arg)...), true) ? S_OK : E_FAIL;
-		}
-		return E_FAIL;
-	}
-
-	template<class... Args>
-	HResult RegFormatRemoveValue(RegistryBaseKey baseKey, const String& subPathFormat, const String& name, Args&&... arg)
-	{
-		RegistryKey key(baseKey, String::Format(subPathFormat, std::forward<Args>(arg)...), RegistryAccess::Write);
-		if (key)
-		{
-			return key.RemoveValue(name) ? S_OK : E_FAIL;
-		}
-		return E_FAIL;
-	}
-
-	String FormatGUIDToClassID(const UniversallyUniqueID& guid)
-	{
 		return guid.ToString(UUIDToStringFormat::CurlyBraces|UUIDToStringFormat::UpperCase);
 	}
 }
@@ -130,6 +76,15 @@ namespace BethesdaModule::ShellView
 				m_AssociationsChanged = true;
 			}
 		}
+	}
+	
+	HResult RegisterExtension::MapNotFoundToSuccess(HResult hr) const
+	{
+		return ::HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND) == *hr ? HResult(S_OK) : hr;
+	}
+	HResult RegisterExtension::MapWin32ToHResult(Win32Error errorCode) const
+	{
+		return ::HRESULT_FROM_WIN32(*errorCode);
 	}
 
 	RegisterExtension::RegisterExtension(const UniversallyUniqueID& clsid, RegistryBaseKey hkeyRoot)
@@ -313,7 +268,7 @@ namespace BethesdaModule::ShellView
 		String guid = FormatGUIDToClassID(m_ClassGUID);
 
 		// Might have an AppID value, trying that.
-		if (HResult hr = RegFormatRemoveKey(m_RegistryBaseKey, L"Software\\Classes\\AppID\\%1", guid))
+		if (hr = RegFormatRemoveKey(m_RegistryBaseKey, L"Software\\Classes\\AppID\\%1", guid))
 		{
 			hr = RegFormatRemoveKey(m_RegistryBaseKey, L"Software\\Classes\\CLSID\\%1", guid);
 		}

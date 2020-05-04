@@ -31,6 +31,79 @@ namespace BethesdaModule::ShellView
 			HResult EnsureBaseProgIDVerbIsNone(const String& progID) const;
 			void UpdateAssocChanged(HResult hr, const String& keyFormatString) const;
 
+			HResult MapNotFoundToSuccess(HResult hr) const;
+			HResult MapWin32ToHResult(Win32Error errorCode) const;
+
+			template<class TValue, class... Args>
+			HResult RegFormatSetValue(RegistryBaseKey baseKey, const String& subPathFormat, const String& name, const TValue& value, Args&&... arg) const
+			{
+				const HResult hr = [&]() -> HResult
+				{
+					RegistryKey root(baseKey);
+					if (root)
+					{
+						if (RegistryKey key = root.CreateKey(String::Format(subPathFormat, std::forward<Args>(arg)...), RegistryAccess::Write))
+						{
+							if constexpr (std::is_integral_v<TValue> && sizeof(TValue) <= 4)
+							{
+								key.SetUInt32Value(name, value);
+							}
+							else if constexpr (std::is_integral_v<TValue> && sizeof(TValue) > 4)
+							{
+								key.SetUInt64Value(name, value);
+							}
+							else if constexpr (std::is_same_v<TValue, wxScopedCharBuffer>)
+							{
+								key.SetBinaryValue(name, value.data(), value.length());
+							}
+							else
+							{
+								key.SetStringValue(name, value);
+							}
+							return MapWin32ToHResult(key.GetLastError());
+						}
+					}
+					return MapWin32ToHResult(root.GetLastError());
+				}();
+				UpdateAssocChanged(hr, subPathFormat);
+				return hr;
+			}
+
+			template<class... Args>
+			HResult RegFormatRemoveKey(RegistryBaseKey baseKey, const String& subPathFormat, Args&&... arg) const
+			{
+				const HResult hr = [&]() -> HResult
+				{
+					FSPath path = String::Format(subPathFormat, std::forward<Args>(arg)...);
+					RegistryKey key(baseKey, path.GetParent(), RegistryAccess::Delete|RegistryAccess::Read);
+					if (key)
+					{
+						key.RemoveKey(path.GetName(), true);
+						return MapWin32ToHResult(key.GetLastError());
+					}
+					return MapWin32ToHResult(key.GetLastError());
+				}();
+				UpdateAssocChanged(hr, subPathFormat);
+				return MapNotFoundToSuccess(hr);
+			}
+
+			template<class... Args>
+			HResult RegFormatRemoveValue(RegistryBaseKey baseKey, const String& subPathFormat, const String& name, Args&&... arg) const
+			{
+				const HResult hr = [&]() -> HResult
+				{
+					RegistryKey key(baseKey, String::Format(subPathFormat, std::forward<Args>(arg)...), RegistryAccess::Write);
+					if (key)
+					{
+						key.RemoveValue(name);
+						return MapWin32ToHResult(key.GetLastError());
+					}
+					return MapWin32ToHResult(key.GetLastError());
+				}();
+				UpdateAssocChanged(hr, subPathFormat);
+				return MapNotFoundToSuccess(hr);
+			}
+
 		public:
 			RegisterExtension(const UniversallyUniqueID& clsid = {}, RegistryBaseKey hkeyRoot = RegistryBaseKey::CurrentUser);
 			~RegisterExtension();
