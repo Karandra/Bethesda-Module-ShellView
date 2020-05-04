@@ -8,6 +8,12 @@
     <ClCompile Include="Source\RegisterExtension.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\MetadataHandler.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Utility\PropertyStore.cpp">
+      <Filter>Source\Utility</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">
@@ -25,6 +31,12 @@
     </ClInclude>
     <ClInclude Include="Source\RegisterExtension.h">
       <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\MetadataHandler.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Utility\PropertyStore.h">
+      <Filter>Source\Utility</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

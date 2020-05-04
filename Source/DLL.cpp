@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "DLL.h"
+#include "MetadataHandler.h"
 
 namespace
 {
@@ -46,7 +47,7 @@ namespace BethesdaModule::ShellView
 				break;
 			}
 		}
-		return hr;
+		return *hr;
 	}
 
 	HRESULT STDMETHODCALLTYPE DLLClassFactory::QueryInterface(REFIID riid, void** ppv)
@@ -68,7 +69,7 @@ extern "C"
 
 		constexpr ClassObjectInitializer classObjectInitializers[] =
 		{
-			{&__uuidof(COpenMetadataHandler), COpenMetadataHandler_CreateInstance}
+			{&__uuidof(MetadataHandler), MetadataHandler::CreateInstance}
 		};
 		return DLLClassFactory::CreateInstance(clsid, classObjectInitializers, std::size(classObjectInitializers), riid, result);
 	}
@@ -77,24 +78,14 @@ extern "C"
 		using namespace KxFramework;
 		using namespace BethesdaModule::ShellView;
 
-		HResult hr = RegisterDocFile();
-		if (hr)
-		{
-			hr = RegisterOpenMetadata();
-		}
-		return hr;
+		return *RegisterMetadataHandler(".testext");
 	}
 	HRESULT STDAPICALLTYPE DllUnregisterServer()
 	{
 		using namespace KxFramework;
 		using namespace BethesdaModule::ShellView;
 
-		HResult hr = UnregisterDocFile();
-		if (hr)
-		{
-			hr = UnregisterOpenMetadata();
-		}
-		return hr;
+		return *UnregisterMetadataHandler(".testext");
 	}
 	HRESULT STDAPICALLTYPE DllCanUnloadNow()
 	{
@@ -104,6 +95,6 @@ extern "C"
 
 	BOOL STDAPICALLTYPE DllMain(HINSTANCE handle, DWORD eventID, void* reserved)
 	{
-		return FALSE;
+		return TRUE;
 	}
 }
