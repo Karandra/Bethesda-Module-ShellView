@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "COMIStream.h"
+#include <Kx/Utility/CallAtScopeExit.h>
 
 namespace BethesdaModule::ShellView
 {
@@ -73,6 +74,27 @@ namespace BethesdaModule::ShellView
 			}
 		}
 		return 0;
+	}
+
+	FSPath COMIStream::GetFilePath() const
+	{
+		if (m_Stream)
+		{
+			STATSTG stat = {};
+			Utility::CallAtScopeExit atExit = [&]()
+			{
+				if (stat.pwcsName)
+				{
+					COM::FreeMemory(stat.pwcsName);
+				}
+			};
+			
+			if (m_LastError = m_Stream->Stat(&stat, STATFLAG_DEFAULT))
+			{
+				return stat.pwcsName;
+			}
+		}
+		return {};
 	}
 
 	bool COMIStream::IsWriteable() const

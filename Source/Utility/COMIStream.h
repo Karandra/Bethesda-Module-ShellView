@@ -1,6 +1,7 @@
 #pragma once
 #include "BethesdaModule.hpp"
 #include <Kx/General/StreamWrappers.h>
+#include <Kx/FileSystem/FSPath.h>
 #include <shlobj.h>
 #include <shlwapi.h>
 
@@ -51,10 +52,12 @@ namespace BethesdaModule::ShellView
 				}
 				return false;
 			}
+			
 			HResult GetLastError() const
 			{
 				return m_LastError;
 			}
+			FSPath GetFilePath() const;
 
 			bool IsWriteable() const override;
 			bool IsReadable() const override;
