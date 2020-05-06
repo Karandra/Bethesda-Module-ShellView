@@ -1,5 +1,5 @@
 # Bethesda Module ShellView
-Shell property provider that allows to see some basic info about Bethesda module files on **Details** tab in the system file **Properties** dialog.
+Shell property provider that allows to see some basic info about Bethesda module files on **Details** tab in the system file **Properties** dialog. The DLL registers itself to handle `.esp`, `.esm`, `.esl` and `.esu` file extensions with `BethesdaModule.Metadata` ProgID.
 
 ### Supported formats
 - Morrowind

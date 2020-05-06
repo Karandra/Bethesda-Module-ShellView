@@ -13,12 +13,14 @@ namespace
 		L".esp",
 		L".esm",
 		L".esl",
+		L".esu",
 	};
 	const wchar_t* g_Descriptions[] =
 	{
 		L"Bethesda Module File",
 		L"Bethesda Master Module",
 		L"Bethesda Light Module",
+		L"xEdit Delta Patch",
 	};
 }
 
