@@ -341,24 +341,23 @@ namespace BethesdaModule::ShellView
 
 					if (hr)
 					{
-						if (hr = regHandler.RegisterNewMenuNullFile(info.Extension, info.ProgID))
-						{
-							auto RegisterPropertyNames = [&](const String& type, const std::vector<KxFramework::String>& names) -> HResult
-							{
-								String formattedNames = FormatPropertyNames(names);
-								if (!formattedNames.IsEmpty())
-								{
-									return regHandler.RegisterProgIDValue(info.ProgID, type, formattedNames);
-								}
-								return S_OK;
-							};
+						//hr = regHandler.RegisterNewMenuNullFile(info.Extension, info.ProgID);
 
-							if (hr = RegisterPropertyNames(L"FullDetails", info.FullDetailsPropertyNames))
+						auto RegisterPropertyNames = [&](const String& type, const std::vector<KxFramework::String>& names) -> HResult
+						{
+							String formattedNames = FormatPropertyNames(names);
+							if (!formattedNames.IsEmpty())
 							{
-								if (hr = RegisterPropertyNames(L"InfoTip", info.InfoTipPropertyNames))
-								{
-									return RegisterPropertyNames(L"PreviewDetails", info.PreviewDetailsPropertyNames);
-								}
+								return regHandler.RegisterProgIDValue(info.ProgID, type, formattedNames);
+							}
+							return S_OK;
+						};
+
+						if (hr = RegisterPropertyNames(L"FullDetails", info.FullDetailsPropertyNames))
+						{
+							if (hr = RegisterPropertyNames(L"InfoTip", info.InfoTipPropertyNames))
+							{
+								return RegisterPropertyNames(L"PreviewDetails", info.PreviewDetailsPropertyNames);
 							}
 						}
 					}
