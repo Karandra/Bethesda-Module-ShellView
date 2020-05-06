@@ -5,6 +5,7 @@
 namespace
 {
 	std::atomic<size_t> g_RefCount = 0;
+	wxAssertHandler_t g_OriginalAssertHandler = nullptr;
 
 	constexpr wchar_t g_MetadataProgID[] = L"BethesdaModule.Metadata";
 	const wchar_t* g_Extensions[] =
@@ -157,6 +158,11 @@ extern "C"
 
 	BOOL STDAPICALLTYPE DllMain(HINSTANCE handle, DWORD eventID, void* reserved)
 	{
+		if (eventID == DLL_PROCESS_ATTACH)
+		{
+			// Remove all asserts as by default it shows a message dialog which isn't really a good idea for this DLL
+			g_OriginalAssertHandler = wxSetAssertHandler(nullptr);
+		}
 		return TRUE;
 	}
 }
