@@ -20,7 +20,7 @@ Property fields are marked as editable but actual file data editing is not suppo
 - Master files list.
 
 # Installation
-Run `cmd.exe` as an administrator and use following comments. Use full paths to `regsvr32.exe` and the DLL if needed.
+Run `cmd.exe` as an administrator and use following commands. Use full paths to `regsvr32.exe` and the DLL if needed.
 
 **Install**:
 ```ps
