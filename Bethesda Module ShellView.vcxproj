@@ -170,6 +170,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Resources\resource.h" />
     <ClInclude Include="Source\BethesdaModule.hpp" />
     <ClInclude Include="Source\DLL.h" />
     <ClInclude Include="Source\MetadataHandler.h" />
@@ -179,7 +180,6 @@
     <ClInclude Include="Source\Utility\PropertyStore.h" />
     <ClInclude Include="Source\Utility\VariantProperty.h" />
     <ClInclude Include="stdafx.h" />
-    <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\DLL.cpp" />

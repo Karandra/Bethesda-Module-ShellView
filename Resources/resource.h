@@ -1,5 +1,13 @@
-#define IDC_ICON						1
+//{{NO_DEPENDENCIES}}
+// Microsoft Visual C++ generated include file.
+// Used by BethesdaModule ShellView.rc
+//
+#define VS_VERSION_INFO                 1
+#define IDC_ICON                        1
+#define IDC_STATIC                      -1
 
+// Next default values for new objects
+// 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1

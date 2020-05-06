@@ -2,7 +2,7 @@
 #include "MetadataHandler.h"
 #include "RegisterExtension.h"
 #include "DLL.h"
-#include "resource.h"
+#include "Resources/resource.h"
 #include "Utility/PropertyStore.h"
 #include "Utility/VariantProperty.h"
 
