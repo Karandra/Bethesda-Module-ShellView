@@ -1,7 +1,7 @@
 # Bethesda Module ShellView
 Shell property provider that allows to see some basic info about Bethesda module files on **Details** tab in the system file **Properties** dialog. The DLL registers itself to handle `.esp`, `.esm`, `.esl` and `.esu` file extensions with `BethesdaModule.Metadata` ProgID.
 
-Property fields are marked as editable but actual file data edit is not supported. If you click **Apply** with any changed made to the new properties you will get **0x80004001: Not implemented** error. This is normal, property fields are made editable so you can copy metadata from there. If they're read-only there is no way to copy text.
+Property fields are marked as editable but actual file data editing is not supported. If you click **Apply** with any changes made to the new properties you will get **0x80004001: Not implemented** error. This is normal, property fields are made editable so you can copy their values. If they're read-only there is no way to copy text.
 
 ### Supported formats
 - Morrowind
@@ -34,6 +34,9 @@ regsvr32 "Bethesda Module ShellView.dll" /u
 
 # Build
 Required [KxFramework](https://github.com/KerberX/KxFramework). You can easily get it using **VCPkg** package manager and provided portfile to build the **KxFramework** itself.
+
+# Future plans
+- Add custom properties instead of using the system ones.
 
 # Screenshots
 ![1](https://cdn.discordapp.com/attachments/511613474112274493/707517902047150080/1.png)
