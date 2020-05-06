@@ -4,19 +4,35 @@
 #include "DLL.h"
 #include "resource.h"
 #include "Utility/PropertyStore.h"
+#include "Utility/VariantProperty.h"
 
 namespace
 {
-	constexpr wchar_t OpenMetadataProgID[] = L"Windows.OpenMetadata";
-	constexpr wchar_t OpenMetadataDescription[] = L"Open Metadata File";
+	// https://docs.microsoft.com/ru-ru/windows/win32/properties/props-system-author
+	// https://github.com/microsoft/Windows-classic-samples/tree/master/Samples/Win7Samples/winui/shell/appshellintegration
 
-	constexpr wchar_t DocFullDetails[] = L"prop:System.PropGroup.Description;System.Title;System.Subject;System.Keywords;System.Category;System.Comment;System.Rating;System.PropGroup.Origin;System.Author;System.Document.LastAuthor;System.Document.RevisionNumber;System.Document.Version;System.ApplicationName;System.Company;System.Document.Manager;System.Document.DateCreated;System.Document.DateSaved;System.Document.DatePrinted;System.Document.TotalEditingTime;System.PropGroup.Content;System.ContentStatus;System.ContentType;System.Document.PageCount;System.Document.WordCount;System.Document.CharacterCount;System.Document.LineCount;System.Document.ParagraphCount;System.Document.Template;System.Document.Scale;System.Document.LinksDirty;System.Language;System.PropGroup.FileSystem;System.ItemNameDisplay;System.ItemType;System.ItemFolderPathDisplay;System.DateCreated;System.DateModified;System.Size;System.FileAttributes;System.OfflineAvailability;System.OfflineStatus;System.SharedWith;System.FileOwner;System.ComputerName";
-	constexpr wchar_t DocInfoTip[] = L"prop:System.ItemType;System.Author;System.Size;System.DateModified;System.Document.PageCount";
-	constexpr wchar_t DocPreviewDetails[] = L"prop:*System.DateModified;System.Author;System.Keywords;System.Rating;*System.Size;System.Title;System.Comment;System.Category;*System.Document.PageCount;System.ContentStatus;System.ContentType;*System.OfflineAvailability;*System.OfflineStatus;System.Subject;*System.DateCreated;*System.SharedWith";
-
-	KxFramework::NativeUUID FromUUID(const ::UUID& uuid) noexcept
+	KxFramework::String FormatPropertyNames(const std::vector<KxFramework::String>& names)
 	{
-		return *reinterpret_cast<const KxFramework::NativeUUID*>(&uuid);
+		using namespace KxFramework;
+
+		// Reserve with semi-average property name length
+		String result;
+		result.reserve(names.size() * 24);
+
+		for (const auto& name: names)
+		{
+			if (result.IsEmpty())
+			{
+				result += wxS("prop:");
+			}
+			result += name;
+			result += wxS(';');
+		}
+		return result;
+	}
+	KxFramework::String StringOrNone(const KxFramework::String& value)
+	{
+		return !value.IsEmpty() ? value : wxS("<None>");
 	}
 }
 
@@ -24,29 +40,7 @@ namespace BethesdaModule::ShellView
 {
 	HRESULT MetadataHandler::CreateInstance(REFIID riid, void** ppv)
 	{
-		HRESULT hr = E_OUTOFMEMORY;
-		if (MetadataHandler* object = new(std::nothrow) MetadataHandler())
-		{
-			hr = object->QueryInterface(riid, ppv);
-			object->Release();
-		}
-		return hr;
-	}
-
-	HRESULT MetadataHandler::SaveToStream()
-	{
-		COMPtr<IStream> streamSaveTo;
-		HResult hr = GetSafeSaveStream(m_Stream, &streamSaveTo);
-		if (hr)
-		{
-			// Write the XML out to the temporary stream and commit it
-			if (hr = SavePropertyStoreToStream(m_Cache, streamSaveTo))
-			{
-				// Also commits 'streamSaveTo'
-				hr = m_Stream->Commit(STGC_DEFAULT);
-			}
-		}
-		return *hr;
+		return *MakeObjectInstance<MetadataHandler>(riid, ppv);
 	}
 
 	MetadataHandler::MetadataHandler()
@@ -64,6 +58,7 @@ namespace BethesdaModule::ShellView
 		static const QITAB interfaces[] =
 		{
 			QITABENT(MetadataHandler, IPropertyStore),
+			QITABENT(MetadataHandler, IPropertyStoreCapabilities),
 			QITABENT(MetadataHandler, IInitializeWithStream),
 			{nullptr, 0},
 		};
@@ -73,83 +68,114 @@ namespace BethesdaModule::ShellView
 	HRESULT MetadataHandler::GetCount(DWORD* pcProps)
 	{
 		*pcProps = 0;
-		return m_Cache ? m_Cache->GetCount(pcProps) : E_UNEXPECTED;
+		return S_OK;
 	}
 	HRESULT MetadataHandler::GetAt(DWORD iProp, PROPERTYKEY* pkey)
 	{
 		*pkey = PKEY_Null;
-		return m_Cache ? m_Cache->GetAt(iProp, pkey) : E_UNEXPECTED;
+		return E_UNEXPECTED;
 	}
 	HRESULT MetadataHandler::GetValue(REFPROPERTYKEY key, PROPVARIANT* pPropVar)
 	{
-		PropVariantInit(pPropVar);
-		return m_Cache ? m_Cache->GetValue(key, pPropVar) : E_UNEXPECTED;
+		if (key == PKEY_Author)
+		{
+			// Author
+			VariantProperty property;
+			property = StringOrNone(m_FileInfo.Author);
+			return property.Detach(*pPropVar);
+		}
+		if (key == PKEY_Comment)
+		{
+			// Description
+			VariantProperty property;
+			property = StringOrNone(m_FileInfo.Description);
+			return property.Detach(*pPropVar);
+		}
+		if (key == PKEY_ContentType)
+		{
+			// ESP/ESM/ESL/Localized and such
+			String content = HeaderFlagsDef::ToOrExpression(m_FileInfo.Flags);
+
+			VariantProperty property;
+			property = !content.IsEmpty() ? content : wxS("Normal");
+			return property.Detach(*pPropVar);
+		}
+		if (key == PKEY_FileVersion)
+		{
+			// Form version (if supported)
+			VariantProperty property;
+			property = m_FileInfo.FormVersion;
+			return property.Detach(*pPropVar);
+		}
+		return S_FALSE;
 	}
 	HRESULT MetadataHandler::SetValue(REFPROPERTYKEY key, REFPROPVARIANT propVar)
 	{
 		// SetValue just updates the internal value cache
-
-		HResult hr = E_UNEXPECTED;
-		if (m_Cache)
-		{
-			// check grfMode to ensure writes are allowed
-			hr = STG_E_ACCESSDENIED;
-			if (m_StreamAccess & STGM_READWRITE)
-			{
-				hr = m_Cache->SetValueAndState(key, &propVar, PSC_DIRTY);
-			}
-		}
-		return *hr;
+		//return STG_E_ACCESSDENIED;
+		return E_NOTIMPL;
 	}
 	HRESULT MetadataHandler::Commit()
 	{
 		// Commit writes the internal value cache back out to the stream passed to Initialize
+		//return STG_E_ACCESSDENIED;
+		return E_NOTIMPL;
+	}
 
-		HResult hr = E_UNEXPECTED;
-		if (m_Cache)
-		{
-			// Must be opened for writing
-			hr = STG_E_ACCESSDENIED;
-			if (m_StreamAccess & STGM_READWRITE)
-			{
-				hr = SaveToStream();
-			}
-		}
-		return *hr;
+	HRESULT STDMETHODCALLTYPE MetadataHandler::IsPropertyWritable(REFPROPERTYKEY key)
+	{
+		return S_OK;
 	}
 
 	HRESULT MetadataHandler::Initialize(IStream* stream, DWORD streamAccess)
 	{
-		HResult hr = E_UNEXPECTED;
-		if (!m_Stream)
+		if (m_Stream.Open(*stream) && m_Stream.ReadStringASCII(m_FileInfo.Signature, 4))
 		{
-			if (hr = LoadPropertyStoreFromStream(stream, IID_PPV_ARGS(&m_Cache)))
+			if (m_FileInfo.Signature == wxS("TES4"))
 			{
-				// Save a reference to the stream as well as the 'streamAccess'
-				if (hr = stream->QueryInterface(&m_Stream))
+				// Read flags and seek to CNAM
+				m_Stream.Seek(4);
+				m_FileInfo.Flags = FromInt<HeaderFlags>(m_Stream.ReadObject<uint32_t>());
+
+				// Skip (FormID + Version control info)
+				m_Stream.Seek(8);
+				m_FileInfo.FormVersion = m_Stream.ReadObject<uint32_t>();
+
+				// Skip HEDR struct
+				m_Stream.Seek(18);
+
+				String recordName = m_Stream.ReadStringASCII(4);
+				if (recordName == wxS("CNAM"))
 				{
-					m_StreamAccess = streamAccess;
+					m_FileInfo.Author = m_Stream.ReadStringACP(m_Stream.ReadObject<uint16_t>());
+					recordName = m_Stream.ReadStringASCII(4);
+				}
+				if (recordName == wxS("SNAM"))
+				{
+					m_FileInfo.Description = m_Stream.ReadStringACP(m_Stream.ReadObject<uint16_t>());
+					recordName = m_Stream.ReadStringASCII(4);
 				}
 			}
+			return S_FALSE;
 		}
-		return *hr;
+		return *m_Stream.GetLastError();
 	}
 }
 
 namespace BethesdaModule::ShellView
 {
-	HResult RegisterMetadataHandler(const String& extension)
+	HResult RegisterMetadataHandler(const MetadataHandlerInfo& info)
 	{
 		// Register the property handler COM object, and set the options it uses
-		RegisterExtension re(FromUUID(__uuidof(MetadataHandler)), RegistryBaseKey::LocalMachine);
-		HResult hr = re.RegisterInProcServer(OpenMetadataDescription, L"Both");
+		RegisterExtension regHandler(UUIDOf<MetadataHandler>(), RegistryBaseKey::LocalMachine);
+		HResult hr = regHandler.RegisterInProcServer(info.Description, L"Both");
 		if (hr)
 		{
-			if (hr = re.RegisterInProcServerAttribute(L"ManualSafeSave", TRUE))
+			if (hr = regHandler.RegisterInProcServerAttribute(L"ManualSafeSave", TRUE))
 			{
-				if (re.RegisterInProcServerAttribute(L"EnableShareDenyWrite", TRUE))
+				if (hr = regHandler.RegisterInProcServerAttribute(L"EnableShareDenyWrite", TRUE))
 				{
-					hr = re.RegisterInProcServerAttribute(L"EnableShareDenyNone", TRUE);
+					hr = regHandler.RegisterInProcServerAttribute(L"EnableShareDenyNone", TRUE);
 				}
 			}
 		}
@@ -157,28 +183,43 @@ namespace BethesdaModule::ShellView
 		// Property Handler and Kind registrations use a different mechanism than the rest of the file-type association system, and do not use ProgIDs
 		if (hr)
 		{
-			if (hr = re.RegisterPropertyHandler(extension))
+			if (hr = regHandler.RegisterPropertyHandler(info.Extension))
 			{
-				hr = re.RegisterPropertyHandlerOverride(L"System.Kind");
+				hr = regHandler.RegisterPropertyHandlerOverride(L"System.Kind");
 			}
 		}
 
 		// Associate our ProgID with the file extension, and write the remainder of the registration data to the ProgID to minimize conflicts with other applications and facilitate easy unregistration
 		if (hr)
 		{
-			if (hr = re.RegisterExtensionWithProgID(extension, OpenMetadataProgID))
+			if (hr = regHandler.RegisterExtensionWithProgID(info.Extension, info.ProgID))
 			{
-				if (hr = re.RegisterProgID(OpenMetadataProgID, OpenMetadataDescription, IDC_ICON))
+				if (hr = regHandler.RegisterProgID(info.ProgID, info.Description, IDC_ICON))
 				{
-					if (hr = re.RegisterProgIDValue(OpenMetadataProgID, L"NoOpen", L"This is a sample file type and does not have any apps installed to handle it"))
+					if (!info.NoOpenMessage.IsEmpty())
 					{
-						if (hr = re.RegisterNewMenuNullFile(extension, OpenMetadataProgID))
+						hr = regHandler.RegisterProgIDValue(info.ProgID, L"NoOpen", info.NoOpenMessage);
+					}
+
+					if (hr)
+					{
+						if (hr = regHandler.RegisterNewMenuNullFile(info.Extension, info.ProgID))
 						{
-							if (hr = re.RegisterProgIDValue(OpenMetadataProgID, L"FullDetails", DocFullDetails))
+							auto RegisterPropertyNames = [&](const String& type, const std::vector<KxFramework::String>& names) -> HResult
 							{
-								if (hr = re.RegisterProgIDValue(OpenMetadataProgID, L"InfoTip", DocInfoTip))
+								String formattedNames = FormatPropertyNames(names);
+								if (!formattedNames.IsEmpty())
 								{
-									hr = re.RegisterProgIDValue(OpenMetadataProgID, L"PreviewDetails", DocPreviewDetails);
+									return regHandler.RegisterProgIDValue(info.ProgID, type, formattedNames);
+								}
+								return S_OK;
+							};
+
+							if (hr = RegisterPropertyNames(L"FullDetails", info.FullDetailsPropertyNames))
+							{
+								if (hr = RegisterPropertyNames(L"InfoTip", info.InfoTipPropertyNames))
+								{
+									return RegisterPropertyNames(L"PreviewDetails", info.PreviewDetailsPropertyNames);
 								}
 							}
 						}
@@ -190,29 +231,29 @@ namespace BethesdaModule::ShellView
 		// Also register the property-driven thumbnail handler on the ProgID
 		if (hr)
 		{
-			re.SetHandlerCLSID(FromUUID(__uuidof(PropertyThumbnailHandler)));
-			hr = re.RegisterThumbnailHandler(OpenMetadataProgID);
+			regHandler.SetHandlerCLSID(UUIDOf<PropertyThumbnailHandler>());
+			hr = regHandler.RegisterThumbnailHandler(info.ProgID);
 		}
 		return hr;
 	}
-	HResult UnregisterMetadataHandler(const String& extension)
+	HResult UnregisterMetadataHandler(const MetadataHandlerInfo& info)
 	{
 		// Unregister the property handler COM object.
-		RegisterExtension re(FromUUID(__uuidof(MetadataHandler)), RegistryBaseKey::LocalMachine);
-		HResult hr = re.UnRegisterObject();
+		RegisterExtension regHandler(UUIDOf<MetadataHandler>(), RegistryBaseKey::LocalMachine);
+		HResult hr = regHandler.UnRegisterObject();
 		if (hr)
 		{
 			// Unregister the property handler and kind for the file extension.
-			if (hr = re.UnRegisterPropertyHandler(extension))
+			if (hr = regHandler.UnRegisterPropertyHandler(info.Extension))
 			{
-				if (hr = re.UnRegisterKind(extension))
+				if (hr = regHandler.UnRegisterKind(info.Extension))
 				{
 					// Remove the whole ProgID since we own all of those settings.
 					// Don't try to remove the file extension association since some other application may have overridden it with their own ProgID in the meantime.
 					// Leaving the association to a non-existing ProgID is handled gracefully by the Shell.
 					// NOTE: If the file extension is unambiguously owned by this application, the association to the ProgID could be safely removed as well,
 					// along with any other association data stored on the file extension itself.
-					hr = re.UnRegisterProgID(OpenMetadataProgID, extension);
+					hr = regHandler.UnRegisterProgID(info.ProgID, info.Extension);
 				}
 			}
 		}

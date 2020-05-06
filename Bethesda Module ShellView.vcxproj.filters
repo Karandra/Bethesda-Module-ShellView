@@ -14,6 +14,12 @@
     <ClCompile Include="Source\Utility\PropertyStore.cpp">
       <Filter>Source\Utility</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Utility\VariantProperty.cpp">
+      <Filter>Source\Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Utility\COMIStream.cpp">
+      <Filter>Source\Utility</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">
@@ -36,6 +42,12 @@
       <Filter>Source</Filter>
     </ClInclude>
     <ClInclude Include="Source\Utility\PropertyStore.h">
+      <Filter>Source\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Utility\VariantProperty.h">
+      <Filter>Source\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Utility\COMIStream.h">
       <Filter>Source\Utility</Filter>
     </ClInclude>
   </ItemGroup>
@@ -64,5 +76,10 @@
     <None Include="Bethesda Module ShellView.def">
       <Filter>Resources</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Resources\PropertyNames.txt">
+      <Filter>Resources</Filter>
+    </Text>
   </ItemGroup>
 </Project>

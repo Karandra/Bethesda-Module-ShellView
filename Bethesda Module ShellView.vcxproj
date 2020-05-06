@@ -175,7 +175,9 @@
     <ClInclude Include="Source\MetadataHandler.h" />
     <ClInclude Include="Source\RegisterExtension.h" />
     <ClInclude Include="Source\Utility\COMRefCount.h" />
+    <ClInclude Include="Source\Utility\COMIStream.h" />
     <ClInclude Include="Source\Utility\PropertyStore.h" />
+    <ClInclude Include="Source\Utility\VariantProperty.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
@@ -183,7 +185,9 @@
     <ClCompile Include="Source\DLL.cpp" />
     <ClCompile Include="Source\MetadataHandler.cpp" />
     <ClCompile Include="Source\RegisterExtension.cpp" />
+    <ClCompile Include="Source\Utility\COMIStream.cpp" />
     <ClCompile Include="Source\Utility\PropertyStore.cpp" />
+    <ClCompile Include="Source\Utility\VariantProperty.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
@@ -199,6 +203,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Bethesda Module ShellView.def" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Resources\PropertyNames.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

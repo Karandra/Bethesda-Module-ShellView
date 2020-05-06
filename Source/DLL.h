@@ -22,12 +22,20 @@ namespace BethesdaModule::ShellView
 	class DECLSPEC_UUID("993BE281-6695-4BA5-8A2A-7AACBFAAB69E") OfficeOPCPropertyHandler;
 	class DECLSPEC_UUID("C41662BB-1FA0-4CE0-8DC5-9B7F8279FF97") OfficeOPCExtractImageHandler;
 	class DECLSPEC_UUID("9DBD2C50-62AD-11D0-B806-00C04FD706EC") PropertyThumbnailHandler;
+	
+	enum class Registration
+	{
+		Enable,
+		Disable
+	};
 }
 
 namespace BethesdaModule::ShellView
 {
 	void DllAddRef() noexcept;
 	void DllRelease() noexcept;
+
+	HResult RegisterMetatata(Registration registration);
 }
 
 namespace BethesdaModule::ShellView

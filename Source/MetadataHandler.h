@@ -1,29 +1,62 @@
 #pragma once
 #include "BethesdaModule.hpp"
 #include "Utility/COMRefCount.h"
+#include "Utility/COMIStream.h"
 #include <shlwapi.h>
 #include <propkey.h>
 #include <propsys.h>
 
 #include <Kx/System/COM.h>
 #include <Kx/System/ErrorCodeValue.h>
+#include <Kx/General/IndexedEnum.h>
 #include <Kx/FileSystem/FSPath.h>
 
 namespace BethesdaModule::ShellView
 {
-	class MetadataHandler: public IPropertyStore, public IInitializeWithStream
+	enum class HeaderFlags: uint32_t
+	{
+		None = 0,
+		Master = 1 << 0,
+		Localized = 1 << 7,
+		Light = 1 << 9,
+		Ignored = 1 << 12,
+	};
+
+	struct HeaderFlagsDef final: public IndexedEnumDefinition<HeaderFlagsDef, HeaderFlags, StringView>
+	{
+		inline static constexpr TItem Items[] =
+		{
+			{HeaderFlags::Master, wxS("Master")},
+			{HeaderFlags::Localized, wxS("Localized")},
+			{HeaderFlags::Light, wxS("Light")},
+			{HeaderFlags::Ignored, wxS("Ignored")},
+		};
+	};
+}
+namespace KxFramework::EnumClass
+{
+	Kx_EnumClass_AllowEverything(BethesdaModule::ShellView::HeaderFlags);
+}
+
+namespace BethesdaModule::ShellView
+{
+	class MetadataHandler: public IPropertyStore, public IPropertyStoreCapabilities, public IInitializeWithStream
 	{
 		public:
 			static HRESULT CreateInstance(REFIID riid, void** ppv);
 
 		private:
 			COMRefCount<MetadataHandler, ULONG, 1> m_RefCount;
-			COMPtr<IStream> m_Stream;
-			COMPtr<IPropertyStoreCache> m_Cache = nullptr; // Internal value cache to abstract IPropertyStore operations from the DOM back-end
-			DWORD m_StreamAccess = 0;
+			COMIStream m_Stream;
 
-		private:
-			HRESULT SaveToStream();
+			struct
+			{
+				String Signature;
+				HeaderFlags Flags = HeaderFlags::None;
+				uint32_t FormVersion = 0;
+				String Author;
+				String Description;
+			} m_FileInfo;
 
 		public:
 			MetadataHandler();
@@ -48,6 +81,9 @@ namespace BethesdaModule::ShellView
 			HRESULT STDMETHODCALLTYPE SetValue(REFPROPERTYKEY key, REFPROPVARIANT propVar) override;
 			HRESULT STDMETHODCALLTYPE Commit() override;
 
+			// IPropertyStoreCapabilities
+			HRESULT STDMETHODCALLTYPE IsPropertyWritable(REFPROPERTYKEY key) override;
+
 			// IInitializeWithStream
 			HRESULT STDMETHODCALLTYPE Initialize(IStream* stream, DWORD streamAccess) override;
 	};
@@ -55,6 +91,18 @@ namespace BethesdaModule::ShellView
 
 namespace BethesdaModule::ShellView
 {
-	HResult RegisterMetadataHandler(const String& extension);
-	HResult UnregisterMetadataHandler(const String& extension);
+	struct MetadataHandlerInfo final
+	{
+		String Extension;
+		String ProgID;
+		String Description;
+		String NoOpenMessage;
+
+		std::vector<String> FullDetailsPropertyNames;
+		std::vector<String> PreviewDetailsPropertyNames;
+		std::vector<String> InfoTipPropertyNames;
+	};
+
+	HResult RegisterMetadataHandler(const MetadataHandlerInfo& info);
+	HResult UnregisterMetadataHandler(const MetadataHandlerInfo& info);
 }

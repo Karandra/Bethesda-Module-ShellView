@@ -5,6 +5,20 @@
 namespace
 {
 	std::atomic<size_t> g_RefCount = 0;
+
+	constexpr wchar_t g_MetadataProgID[] = L"BethesdaModule.Metadata";
+	const wchar_t* g_Extensions[] =
+	{
+		L".esp",
+		L".esm",
+		L".esl",
+	};
+	const wchar_t* g_Descriptions[] =
+	{
+		L"Bethesda Module File",
+		L"Bethesda Master Module",
+		L"Bethesda Light Module",
+	};
 }
 
 namespace BethesdaModule::ShellView
@@ -16,6 +30,52 @@ namespace BethesdaModule::ShellView
 	void DllRelease() noexcept
 	{
 		--g_RefCount;
+	}
+
+	HResult RegisterMetatata(Registration registration)
+	{
+		MetadataHandlerInfo info;
+		info.ProgID = g_MetadataProgID;
+		info.Description = g_Descriptions[0];
+		info.FullDetailsPropertyNames =
+		{
+			wxS("System.ItemNameDisplay"),
+			wxS("System.ItemType"),
+			wxS("System.ItemFolderPathDisplay"),
+			wxS("System.Size"),
+			wxS("System.DateCreated"),
+			wxS("System.DateModified"),
+			wxS("System.FileAttributes"),
+			wxS("System.FileOwner"),
+			wxS("System.ComputerName"),
+
+			wxS("System.Author"),
+			wxS("System.Comment"),
+			wxS("System.FileVersion"),
+			wxS("System.ContentType"),
+		};
+		info.InfoTipPropertyNames =
+		{
+			wxS("System.ItemType"),
+			wxS("System.Size"),
+			wxS("System.DateModified"),
+
+			wxS("System.Author"),
+			wxS("System.Comment"),
+			wxS("System.FileVersion"),
+			wxS("System.ContentType")
+		};
+		info.PreviewDetailsPropertyNames = info.InfoTipPropertyNames;
+
+		HResult hr = S_OK;
+		for (size_t i = 0; i < std::size(g_Extensions) && (hr || registration != Registration::Enable); i++)
+		{
+			info.Extension = g_Extensions[i];
+			//info.Description = g_Descriptions[i];
+
+			hr = registration == Registration::Enable ? RegisterMetadataHandler(info) : UnregisterMetadataHandler(info);
+		}
+		return hr;
 	}
 }
 
@@ -38,11 +98,11 @@ namespace BethesdaModule::ShellView
 		{
 			if (clsid == *classObjectInitializers[i].m_CLSID)
 			{
-				IClassFactory* classFactory = new(std::nothrow) DLLClassFactory(classObjectInitializers[i].m_CreateFunc);
-				if (hr = classFactory ? S_OK : E_OUTOFMEMORY)
+				COMPtr<IClassFactory> classFactory = new(std::nothrow) DLLClassFactory(classObjectInitializers[i].m_CreateFunc);
+				hr = classFactory ? S_OK : E_OUTOFMEMORY;
+				if (hr)
 				{
 					hr = classFactory->QueryInterface(riid, result);
-					classFactory->Release();
 				}
 				break;
 			}
@@ -75,17 +135,15 @@ extern "C"
 	}
 	HRESULT STDAPICALLTYPE DllRegisterServer()
 	{
-		using namespace KxFramework;
 		using namespace BethesdaModule::ShellView;
 
-		return *RegisterMetadataHandler(".testext");
+		return *RegisterMetatata(Registration::Enable);
 	}
 	HRESULT STDAPICALLTYPE DllUnregisterServer()
 	{
-		using namespace KxFramework;
 		using namespace BethesdaModule::ShellView;
 
-		return *UnregisterMetadataHandler(".testext");
+		return *RegisterMetatata(Registration::Disable);
 	}
 	HRESULT STDAPICALLTYPE DllCanUnloadNow()
 	{
