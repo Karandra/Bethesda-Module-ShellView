@@ -222,6 +222,16 @@ namespace BethesdaModule::ShellView
 				AssignString(value.GetView());
 				return *this;
 			}
+			VariantProperty& operator=(std::string_view value)
+			{
+				AssignString(value);
+				return *this;
+			}
+			VariantProperty& operator=(std::wstring_view value)
+			{
+				AssignString(value);
+				return *this;
+			}
 			VariantProperty& operator=(bool value)
 			{
 				return AssignValue<VT_BOOL>(boolVal, value ? VARIANT_TRUE : VARIANT_FALSE);
