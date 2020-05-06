@@ -54,6 +54,7 @@ namespace BethesdaModule::ShellView
 			wxS("System.Comment"),
 			wxS("System.FileVersion"),
 			wxS("System.ContentType"),
+			wxS("System.DataObjectFormat"),
 			wxS("System.Keywords"),
 		};
 		info.InfoTipPropertyNames =

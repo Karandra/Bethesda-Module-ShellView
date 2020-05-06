@@ -203,6 +203,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Bethesda Module ShellView.def" />
+    <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="Resources\PropertyNames.txt" />

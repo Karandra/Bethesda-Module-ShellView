@@ -13,6 +13,24 @@
 
 namespace BethesdaModule::ShellView
 {
+	enum class FormatLevel
+	{
+		Unknown = 0,
+
+		Morrowind,
+		Oblivion,
+		Skyrim
+	};
+	struct FormatLevelDef final: public IndexedEnumDefinition<FormatLevelDef, FormatLevel, StringView>
+	{
+		inline static constexpr TItem Items[] =
+		{
+			{FormatLevel::Morrowind, wxS("Morrowind")},
+			{FormatLevel::Oblivion, wxS("Oblivion")},
+			{FormatLevel::Skyrim, wxS("Skyrim")},
+		};
+	};
+
 	enum class HeaderFlags: uint32_t
 	{
 		None = 0,
@@ -21,7 +39,6 @@ namespace BethesdaModule::ShellView
 		Light = 1 << 9,
 		Ignored = 1 << 12,
 	};
-
 	struct HeaderFlagsDef final: public IndexedEnumDefinition<HeaderFlagsDef, HeaderFlags, StringView>
 	{
 		inline static constexpr TItem Items[] =
@@ -57,7 +74,14 @@ namespace BethesdaModule::ShellView
 				String Author;
 				String Description;
 				std::vector<String> RequiredFiles;
+				FormatLevel FormatLevel = FormatLevel::Unknown;
 			} m_FileInfo;
+
+		private:
+			HResult ReadMorrowind();
+			HResult ReadOblivionSkyrim();
+			HResult ReadOblivion();
+			HResult ReadSkyrim(uint32_t formVersion);
 
 		public:
 			MetadataHandler();

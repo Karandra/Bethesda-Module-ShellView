@@ -76,6 +76,9 @@
     <None Include="Bethesda Module ShellView.def">
       <Filter>Resources</Filter>
     </None>
+    <None Include="README.md">
+      <Filter>Resources</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Resources\PropertyNames.txt">

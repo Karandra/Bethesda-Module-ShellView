@@ -58,6 +58,131 @@ namespace BethesdaModule::ShellView
 		return *MakeObjectInstance<MetadataHandler>(riid, ppv);
 	}
 
+	HResult MetadataHandler::ReadMorrowind()
+	{
+		// Seek after to HEDR and skip its record name and following three 32-bit fields
+		m_Stream.Seek(16 + 12);
+
+		// These are fixed length
+		m_FileInfo.Author = m_Stream.ReadStringACP(32);
+		m_FileInfo.Description = m_Stream.ReadStringACP(256);
+
+		// Skip unknown 32-bit value
+		m_Stream.Skip<uint32_t>();
+
+		// Read master-files if any
+		String recordName = m_Stream.ReadStringASCII(4);
+		while (recordName == wxS("MAST"))
+		{
+			m_FileInfo.RequiredFiles.emplace_back(m_Stream.ReadStringACP(m_Stream.ReadObject<uint32_t>()));
+
+			// Skip DATA 
+			m_Stream.Seek(16);
+			recordName = m_Stream.ReadStringASCII(4);
+		}
+
+		// Morrowind doesn't store anything inside file to help distinguish master from ordinary plugin,
+		// so file extension is the only option.
+		if (m_Stream.GetFilePath().GetExtension().IsSameAs(wxS("esm"), StringOpFlag::IgnoreCase))
+		{
+			m_FileInfo.Flags = HeaderFlags::Master;
+		}
+
+		m_FileInfo.FormatLevel = FormatLevel::Morrowind;
+		return S_OK;
+	}
+	HResult MetadataHandler::ReadOblivionSkyrim()
+	{
+		// Skip size
+		m_Stream.Skip<uint32_t>();
+
+		// Read flags and seek to CNAM
+		m_FileInfo.Flags = FromInt<HeaderFlags>(m_Stream.ReadObject<uint32_t>());
+
+		// Skip (FormID + Version control info)
+		m_Stream.Seek(8);
+
+		// See if next 4 bytes are "HEDR". If so it's Oblivion file, if not it's Skyrim.
+		const uint32_t temp = m_Stream.ReadObject<uint32_t>();
+		if (std::string_view(reinterpret_cast<const char*>(&temp), sizeof(temp)) == "HEDR")
+		{
+			return ReadOblivion();
+		}
+		else
+		{
+			return ReadSkyrim(temp);
+		}
+	}
+	HResult MetadataHandler::ReadOblivion()
+	{
+		// Skip rest of the HEDR struct
+		m_Stream.Seek(14);
+
+		String recordName = m_Stream.ReadStringASCII(4);
+		if (recordName == wxS("CNAM"))
+		{
+			m_FileInfo.Author = m_Stream.ReadStringACP(m_Stream.ReadObject<uint16_t>());
+			recordName = m_Stream.ReadStringASCII(4);
+		}
+		if (recordName == wxS("SNAM"))
+		{
+			m_FileInfo.Description = m_Stream.ReadStringACP(m_Stream.ReadObject<uint16_t>());
+			recordName = m_Stream.ReadStringASCII(4);
+		}
+		if (recordName == wxS("MAST"))
+		{
+			do
+			{
+				m_FileInfo.RequiredFiles.emplace_back(m_Stream.ReadStringACP(m_Stream.ReadObject<uint16_t>()));
+
+				// Skip DATA 
+				m_Stream.Seek(14);
+				recordName = m_Stream.ReadStringASCII(4);
+			}
+			while (recordName == wxS("MAST"));
+		}
+
+		m_FileInfo.FormatLevel = FormatLevel::Oblivion;
+		return S_OK;
+	}
+	HResult MetadataHandler::ReadSkyrim(uint32_t formVersion)
+	{
+		// It was the form version
+		m_FileInfo.FormVersion = formVersion;
+
+		// Skip HEDR struct
+		m_Stream.Seek(18);
+
+		String recordName = m_Stream.ReadStringASCII(4);
+		if (recordName == wxS("CNAM"))
+		{
+			m_FileInfo.Author = m_Stream.ReadStringACP(m_Stream.ReadObject<uint16_t>());
+			recordName = m_Stream.ReadStringASCII(4);
+		}
+		if (recordName == wxS("SNAM"))
+		{
+			m_FileInfo.Description = m_Stream.ReadStringACP(m_Stream.ReadObject<uint16_t>());
+			recordName = m_Stream.ReadStringASCII(4);
+		}
+
+		// Read masters
+		if (recordName == wxS("MAST"))
+		{
+			do
+			{
+				m_FileInfo.RequiredFiles.emplace_back(m_Stream.ReadStringACP(m_Stream.ReadObject<uint16_t>()));
+
+				// Skip DATA 
+				m_Stream.Seek(14);
+				recordName = m_Stream.ReadStringASCII(4);
+			}
+			while (recordName == wxS("MAST"));
+		}
+
+		m_FileInfo.FormatLevel = FormatLevel::Skyrim;
+		return S_OK;
+	}
+
 	MetadataHandler::MetadataHandler()
 		:m_RefCount(this)
 	{
@@ -94,32 +219,41 @@ namespace BethesdaModule::ShellView
 	{
 		if (key == PKEY_Author)
 		{
-			// Author
 			VariantProperty property;
 			property = StringOrNone(m_FileInfo.Author);
 			return property.Detach(*pPropVar);
 		}
 		if (key == PKEY_Comment)
 		{
-			// Description
 			VariantProperty property;
 			property = StringOrNone(m_FileInfo.Description);
 			return property.Detach(*pPropVar);
 		}
+		if (key == PKEY_FileVersion)
+		{
+			VariantProperty property;
+			if (m_FileInfo.FormVersion != 0)
+			{
+				property = m_FileInfo.FormVersion;
+			}
+			else
+			{
+				property = wxS("<Unknown>");
+			}
+			return property.Detach(*pPropVar);
+		}
 		if (key == PKEY_ContentType)
 		{
-			// ESP/ESM/ESL/Localized and such
 			String content = HeaderFlagsDef::ToOrExpression(m_FileInfo.Flags);
 
 			VariantProperty property;
 			property = !content.IsEmpty() ? content : wxS("Normal");
 			return property.Detach(*pPropVar);
 		}
-		if (key == PKEY_FileVersion)
+		if (key == PKEY_DataObjectFormat)
 		{
-			// Form version (if supported)
 			VariantProperty property;
-			property = m_FileInfo.FormVersion;
+			property = FormatLevelDef::TryToString(m_FileInfo.FormatLevel).value_or(StringView(wxS("<Unknown>")));
 			return property.Detach(*pPropVar);
 		}
 		if (key == PKEY_Keywords)
@@ -144,6 +278,7 @@ namespace BethesdaModule::ShellView
 
 	HRESULT STDMETHODCALLTYPE MetadataHandler::IsPropertyWritable(REFPROPERTYKEY key)
 	{
+		// Properties are writable to allow copy values
 		return S_OK;
 	}
 
@@ -151,44 +286,13 @@ namespace BethesdaModule::ShellView
 	{
 		if (m_Stream.Open(*stream) && m_Stream.ReadStringASCII(m_FileInfo.Signature, 4))
 		{
-			if (m_FileInfo.Signature == wxS("TES4"))
+			if (m_FileInfo.Signature == wxS("TES3"))
 			{
-				// Read flags and seek to CNAM
-				m_Stream.Seek(4);
-				m_FileInfo.Flags = FromInt<HeaderFlags>(m_Stream.ReadObject<uint32_t>());
-
-				// Skip (FormID + Version control info)
-				m_Stream.Seek(8);
-				m_FileInfo.FormVersion = m_Stream.ReadObject<uint32_t>();
-
-				// Skip HEDR struct
-				m_Stream.Seek(18);
-
-				String recordName = m_Stream.ReadStringASCII(4);
-				if (recordName == wxS("CNAM"))
-				{
-					m_FileInfo.Author = m_Stream.ReadStringACP(m_Stream.ReadObject<uint16_t>());
-					recordName = m_Stream.ReadStringASCII(4);
-				}
-				if (recordName == wxS("SNAM"))
-				{
-					m_FileInfo.Description = m_Stream.ReadStringACP(m_Stream.ReadObject<uint16_t>());
-					recordName = m_Stream.ReadStringASCII(4);
-				}
-
-				// Read masters
-				if (recordName == wxS("MAST"))
-				{
-					do
-					{
-						m_FileInfo.RequiredFiles.emplace_back(m_Stream.ReadStringACP(m_Stream.ReadObject<uint16_t>()));
-
-						// Skip DATA 
-						m_Stream.Seek(14);
-						recordName = m_Stream.ReadStringASCII(4);
-					}
-					while (recordName == wxS("MAST"));
-				}
+				return *ReadMorrowind();
+			}
+			else if (m_FileInfo.Signature == wxS("TES4"))
+			{
+				return *ReadOblivionSkyrim();
 			}
 			return S_FALSE;
 		}
