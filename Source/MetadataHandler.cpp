@@ -34,6 +34,21 @@ namespace
 	{
 		return !value.IsEmpty() ? value : wxS("<None>");
 	}
+	KxFramework::String ConcatWithSeparator(const std::vector<KxFramework::String>& items, const KxFramework::String& separator)
+	{
+		using namespace KxFramework;
+
+		String result;
+		for (const auto& item: items)
+		{
+			if (!result.IsEmpty())
+			{
+				result += separator;
+			}
+			result += item;
+		}
+		return result;
+	}
 }
 
 namespace BethesdaModule::ShellView
@@ -107,18 +122,23 @@ namespace BethesdaModule::ShellView
 			property = m_FileInfo.FormVersion;
 			return property.Detach(*pPropVar);
 		}
+		if (key == PKEY_Keywords)
+		{
+			// Required files
+			VariantProperty property;
+			property = StringOrNone(ConcatWithSeparator(m_FileInfo.RequiredFiles, wxS("; ")));
+			return property.Detach(*pPropVar);
+		}
 		return S_FALSE;
 	}
 	HRESULT MetadataHandler::SetValue(REFPROPERTYKEY key, REFPROPVARIANT propVar)
 	{
 		// SetValue just updates the internal value cache
-		//return STG_E_ACCESSDENIED;
 		return E_NOTIMPL;
 	}
 	HRESULT MetadataHandler::Commit()
 	{
 		// Commit writes the internal value cache back out to the stream passed to Initialize
-		//return STG_E_ACCESSDENIED;
 		return E_NOTIMPL;
 	}
 
@@ -154,6 +174,20 @@ namespace BethesdaModule::ShellView
 				{
 					m_FileInfo.Description = m_Stream.ReadStringACP(m_Stream.ReadObject<uint16_t>());
 					recordName = m_Stream.ReadStringASCII(4);
+				}
+
+				// Read masters
+				if (recordName == wxS("MAST"))
+				{
+					do
+					{
+						m_FileInfo.RequiredFiles.emplace_back(m_Stream.ReadStringACP(m_Stream.ReadObject<uint16_t>()));
+
+						// Skip DATA 
+						m_Stream.Seek(14);
+						recordName = m_Stream.ReadStringASCII(4);
+					}
+					while (recordName == wxS("MAST"));
 				}
 			}
 			return S_FALSE;

@@ -56,6 +56,7 @@ namespace BethesdaModule::ShellView
 				uint32_t FormVersion = 0;
 				String Author;
 				String Description;
+				std::vector<String> RequiredFiles;
 			} m_FileInfo;
 
 		public:

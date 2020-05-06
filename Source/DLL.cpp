@@ -49,10 +49,12 @@ namespace BethesdaModule::ShellView
 			wxS("System.FileOwner"),
 			wxS("System.ComputerName"),
 
+			wxS("System.PropGroup.Content"),
 			wxS("System.Author"),
 			wxS("System.Comment"),
 			wxS("System.FileVersion"),
 			wxS("System.ContentType"),
+			wxS("System.Keywords"),
 		};
 		info.InfoTipPropertyNames =
 		{
@@ -63,7 +65,8 @@ namespace BethesdaModule::ShellView
 			wxS("System.Author"),
 			wxS("System.Comment"),
 			wxS("System.FileVersion"),
-			wxS("System.ContentType")
+			wxS("System.ContentType"),
+			wxS("System.Keywords")
 		};
 		info.PreviewDetailsPropertyNames = info.InfoTipPropertyNames;
 
