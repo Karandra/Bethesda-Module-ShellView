@@ -32,11 +32,12 @@ regsvr32 "Bethesda Module ShellView.dll"
 regsvr32 "Bethesda Module ShellView.dll" /u
 ```
 
-# Build
-Required [KxFramework](https://github.com/KerberX/KxFramework). You can easily get it using **VCPkg** package manager and provided portfile to build the **KxFramework** itself.
+# Building
+Requires [KxFramework](https://github.com/KerberX/KxFramework). You can easily get it using [**VCPkg** package manager](https://github.com/Microsoft/vcpkg) and provided portfile to build the **KxFramework** itself.
 
 # Future plans
 - Add custom properties instead of using the system ones.
+- Add edit capabilities (will rquire some third-party .esp editing library, probably based on [xEdit](https://github.com/TES5Edit/TES5Edit)).
 
 # Screenshots
 ![1](https://cdn.discordapp.com/attachments/511613474112274493/707517902047150080/1.png)
